@@ -1,0 +1,33 @@
+import Payout from "../models/Payout.js";
+import User from "../models/User.js";
+import { calculateTreeCommission } from "../utils/tree.js";
+
+// POST /api/payout/calculate
+export const calculateCurrentPayout = async (req, res) => {
+    try {
+        const { userId } = req.body;
+
+        const user = await User.findOne({ userId });
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        const { totalUsers, commission } = await calculateTreeCommission(userId);
+
+        let payout = await Payout.findOne({ userId });
+        if (!payout) {
+            payout = new Payout({ userId, name: user.name });
+        }
+
+        payout.currentPayout = commission;
+        await payout.save();
+
+        return res.json({
+            userId,
+            name: user.name,
+            totalUsersInTree: totalUsers,
+            totalCommission: commission,
+        });
+    } catch (err) {
+        console.error("Error calculating current payout:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
+};

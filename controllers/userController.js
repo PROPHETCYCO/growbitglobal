@@ -1,0 +1,148 @@
+import User from "../models/User.js";
+//import jwt from "jsonwebtoken";
+import { generateUniqueUserId } from "../utils/generateUserId.js";
+import { sendMail } from '../mailer.js';
+
+export const registerUser = async (req, res) => {
+    try {
+        const { name, phone, email, password, parentId } = req.body;
+
+        // Validation
+        if (!name || !phone || !email || !password) {
+            return res.status(400).json({ success: false, message: "All fields are required" });
+        }
+
+        // Check if phone/email already exists
+        const existingUser = await User.findOne({
+            $or: [{ email }, { phone }],
+        });
+        if (existingUser) {
+            return res.status(400).json({
+                success: false,
+                message: "Email or phone number already registered",
+            });
+        }
+
+        //if not parentId provided, error
+        if (!parentId) {
+            return res.status(400).json({
+                success: false,
+                message: "Parent ID is not valid",
+            });
+        }
+
+        // 🔹 Step 3: Validate parentId (if provided)
+        if (parentId) {
+            const parentUser = await User.findOne({ userId: parentId });
+            if (!parentUser) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Parent ID is not valid",
+                });
+            }
+        }
+
+        // Generate unique userId
+        const userId = await generateUniqueUserId();
+
+        // Create referral link
+        const baseUrl = "https://example.com/register"; // Replace with your frontend URL
+        const referralLink = `${baseUrl}?ref=${userId}`;
+
+        // Create user
+        const user = await User.create({
+            userId,
+            name,
+            phone,
+            email,
+            password,
+            referralLink,
+            parentId: parentId || null,
+        });
+
+        // If user registered with a referral link, update parent user’s referredIds
+        if (parentId) {
+            await User.updateOne(
+                { userId: parentId },
+                { $push: { referredIds: userId } }
+            );
+        }
+
+        // Sending Mail
+        const subject = `Welcome to Grow Bit Global, ${name || "User"}!`;
+        const html = `
+            <h2>Welcome to Grow Bit Global</h2>
+            <p>Hi ${name || "there"},</p>
+            <p>Your account has been created successfully.</p>
+            <p><strong>User ID:</strong> ${userId}</p>
+            <p><strong>Password:</strong> ${password}</p>
+            <p>Login here: <a href="https://yourdomain.com/login">https://yourdomain.com/login</a></p>
+            <br/>
+            <p><em>Note: Please change your password after your first login.</em></p>
+        `;
+
+        await sendMail(email, subject, html);
+
+
+        res.status(201).json({
+            success: true,
+            message: "User registered and mail sent successfully",
+            // data: {
+            //     userId: user.userId,
+            //     name: user.name,
+            //     email: user.email,
+            //     referralLink: user.referralLink,
+            //     status: user.status,
+            // },
+        });
+    } catch (error) {
+        console.error("Registration error:", error.message);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+
+// LOGIN CONTROLLER
+export const loginUser = async (req, res) => {
+    try {
+        const { userId, password } = req.body;
+
+        // Validate input
+        if (!userId || !password) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide userId and password",
+            });
+        }
+
+        // Find user
+        const user = await User.findOne({ userId });
+        if (!user) {
+            return res.status(400).json({ success: false, message: "Invalid credentials" });
+        }
+
+        // Check password
+        const isMatch = await user.matchPassword(password);
+        if (!isMatch) {
+            return res.status(400).json({ success: false, message: "Invalid credentials" });
+        }
+
+        // Generate JWT
+        const token = user.generateAuthToken();
+
+        res.status(200).json({
+            success: true,
+            message: "Login successful",
+            token,
+            data: {
+                userId: user.userId,
+                name: user.name,
+                email: user.email,
+                status: user.status,
+            },
+        });
+    } catch (error) {
+        console.error("Login error:", error.message);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};
