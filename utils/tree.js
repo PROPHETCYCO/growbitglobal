@@ -1,4 +1,5 @@
 import User from "../models/User.js";
+import Staking from "../models/Staking.js";
 
 const LEVEL_PERCENTAGES = {
     2: 0.10,
@@ -84,5 +85,91 @@ export const calculateTreeCommission = async (
     } catch (error) {
         console.error("❌ Error calculating tree commission:", error);
         return { totalUsers: 0, commission: 0 };
+    }
+};
+
+
+
+/**
+ * Calculates both:
+ *  - Current Team Business (using User.myStaking)
+ *  - Total Team Business (using Staking.myStaking)
+ * for a given user and their full referral tree.
+ */
+export const calculateFullTeamBusiness = async (
+    userId,
+    currentLevel = 1,
+    visited = new Set(),
+    userMap = null,
+    stakingMap = null
+) => {
+    try {
+        // 🔹 Stop at 10 levels
+        if (currentLevel > 10) {
+            return { totalUsers: 0, currentTeamBusiness: 0, totalTeamBusiness: 0 };
+        }
+
+        // 🔹 Load all users once
+        if (!userMap) {
+            const allUsers = await User.find({}, { userId: 1, referredIds: 1, myStaking: 1 });
+            userMap = new Map(allUsers.map((u) => [u.userId, u]));
+        }
+
+        // 🔹 Load all staking records once
+        if (!stakingMap) {
+            const allStakings = await Staking.find({}, { userId: 1, myStaking: 1 });
+            stakingMap = new Map(allStakings.map((s) => [s.userId, s]));
+        }
+
+        // 🔹 Avoid circular recursion
+        if (visited.has(userId)) {
+            return { totalUsers: 0, currentTeamBusiness: 0, totalTeamBusiness: 0 };
+        }
+        visited.add(userId);
+
+        const user = userMap.get(userId);
+        if (!user || !user.referredIds?.length) {
+            return { totalUsers: 0, currentTeamBusiness: 0, totalTeamBusiness: 0 };
+        }
+
+        let totalUsers = 0;
+        let currentTeamBusiness = 0; // from User.myStaking
+        let totalTeamBusiness = 0;   // from Staking.myStaking
+
+        for (const childId of user.referredIds) {
+            const child = userMap.get(childId);
+            if (!child) continue;
+
+            totalUsers += 1;
+
+            // ✅ Current team business from User model
+            if (child.myStaking) {
+                currentTeamBusiness += child.myStaking;
+            }
+
+            // ✅ Total team business from Staking model
+            const childStaking = stakingMap.get(childId);
+            if (childStaking && childStaking.myStaking) {
+                totalTeamBusiness += childStaking.myStaking;
+            }
+
+            // 🔁 Recurse into downline
+            const subTree = await calculateFullTeamBusiness(
+                childId,
+                currentLevel + 1,
+                visited,
+                userMap,
+                stakingMap
+            );
+
+            totalUsers += subTree.totalUsers;
+            currentTeamBusiness += subTree.currentTeamBusiness;
+            totalTeamBusiness += subTree.totalTeamBusiness;
+        }
+
+        return { totalUsers, currentTeamBusiness, totalTeamBusiness };
+    } catch (error) {
+        console.error("❌ Error calculating full team business:", error);
+        return { totalUsers: 0, currentTeamBusiness: 0, totalTeamBusiness: 0 };
     }
 };

@@ -5,6 +5,7 @@ import Wallet from "../models/Wallet.js";
 import { generateUniqueUserId } from "../utils/generateUserId.js";
 import { sendMail } from '../mailer.js';
 import { format } from "date-fns-tz";
+import { calculateFullTeamBusiness } from "../utils/tree.js";
 
 export const registerUser = async (req, res) => {
     try {
@@ -429,5 +430,32 @@ export const requestWithdrawal = async (req, res) => {
     } catch (error) {
         console.error("Error processing withdrawal request:", error);
         return res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+};
+
+
+
+//current team business, total team business, total users in team
+export const getFullTeamBusiness = async (req, res) => {
+    try {
+        const { userId } = req.body;
+        if (!userId)
+            return res.status(400).json({ message: "userId is required" });
+
+        const { totalUsers, currentTeamBusiness, totalTeamBusiness } =
+            await calculateFullTeamBusiness(userId);
+
+        res.status(200).json({
+            success: true,
+            message: "Team business calculated successfully",
+            data: {
+                totalUsers,
+                currentTeamBusiness,
+                totalTeamBusiness,
+            },
+        });
+    } catch (error) {
+        console.error("Error in getFullTeamBusiness:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
     }
 };

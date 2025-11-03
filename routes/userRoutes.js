@@ -1,5 +1,5 @@
 import express from "express";
-import { getUserAndDirectTeamStaking, loginUser, registerFirstUser, registerUser, requestWithdrawal, submitKYC } from "../controllers/userController.js";
+import { getFullTeamBusiness, getUserAndDirectTeamStaking, loginUser, registerFirstUser, registerUser, requestWithdrawal, submitKYC } from "../controllers/userController.js";
 
 const router = express.Router();
 
@@ -9,5 +9,6 @@ router.post("/login", loginUser);
 router.post("/team", getUserAndDirectTeamStaking);
 router.post("/submit-kyc", submitKYC);
 router.post("/withdraw-request", requestWithdrawal);
+router.post("/calculate-team-business", getFullTeamBusiness);
 
 export default router;
