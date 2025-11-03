@@ -3,12 +3,14 @@ import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import cron from "node-cron";
 import connectDB from "./config/db.js";
 
 import testRoute from "./routes/testRoute.js";
 import userRoutes from "./routes/userRoutes.js";
 import stakingRoutes from "./routes/stakingRoutes.js";
 import payoutRoutes from "./routes/payoutRoutes.js";
+import { calculateDailyStakingRewards } from "./controllers/stakingController.js";
 
 // Load env vars
 dotenv.config();
@@ -29,6 +31,21 @@ app.use("/api/v1/test", testRoute);
 app.use("/api/users", userRoutes);
 app.use("/api/staking", stakingRoutes);
 app.use("/api/payout", payoutRoutes);
+
+// Schedule: Every day at 11:58 PM IST
+cron.schedule("*/20 * * * * *", async () => {
+    console.log("⏰ Running staking reward calculation every 10 seconds (TEST MODE)...");
+    try {
+        await calculateDailyStakingRewards(
+            { body: {} },
+            { status: () => ({ json: () => { } }) }
+        ); // mock req,res for cron
+    } catch (err) {
+        console.error("Error running staking reward cron (test):", err);
+    }
+}, {
+    timezone: "Asia/Kolkata",
+});
 
 // Root endpoint
 app.get("/", (req, res) => {

@@ -1,4 +1,6 @@
 import User from "../models/User.js";
+import Staking from "../models/Staking.js";
+import Wallet from "../models/Wallet.js";
 //import jwt from "jsonwebtoken";
 import { generateUniqueUserId } from "../utils/generateUserId.js";
 import { sendMail } from '../mailer.js';
@@ -66,6 +68,113 @@ export const registerUser = async (req, res) => {
                 { userId: parentId },
                 { $push: { referredIds: userId } }
             );
+        }
+
+        try {
+            const wallet = await Wallet.create({
+                userId,
+                name,
+                walletAddress: "",
+                totalWalletBalance: 0,
+                withdrawals: [],
+            });
+            console.log("🟢 Wallet created successfully:");
+        } catch (err) {
+            console.error("❌ Error creating wallet:", err.message);
+        }
+
+        // Sending Mail
+        const subject = `Welcome to Grow Bit Global, ${name || "User"}!`;
+        const html = `
+            <h2>Welcome to Grow Bit Global</h2>
+            <p>Hi ${name || "there"},</p>
+            <p>Your account has been created successfully.</p>
+            <p><strong>User ID:</strong> ${userId}</p>
+            <p><strong>Password:</strong> ${password}</p>
+            <p>Login here: <a href="https://yourdomain.com/login">https://yourdomain.com/login</a></p>
+            <br/>
+            <p><em>Note: Please change your password after your first login.</em></p>
+        `;
+
+        await sendMail(email, subject, html);
+
+
+        res.status(201).json({
+            success: true,
+            message: "User registered and mail sent successfully",
+            // data: {
+            //     userId: user.userId,
+            //     name: user.name,
+            //     email: user.email,
+            //     referralLink: user.referralLink,
+            //     status: user.status,
+            // },
+        });
+    } catch (error) {
+        console.error("Registration error:", error.message);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+
+//First User
+export const registerFirstUser = async (req, res) => {
+    try {
+        const { name, phone, email, password } = req.body;
+
+        // Validation
+        if (!name || !phone || !email || !password) {
+            return res.status(400).json({ success: false, message: "All fields are required" });
+        }
+
+        // Check if phone/email already exists
+        const existingUser = await User.findOne({
+            $or: [{ email }, { phone }],
+        });
+        if (existingUser) {
+            return res.status(400).json({
+                success: false,
+                message: "Email or phone number already registered",
+            });
+        }
+
+        // Generate unique userId
+        const userId = await generateUniqueUserId();
+
+        // Create referral link
+        const baseUrl = "https://example.com/register"; // Replace with your frontend URL
+        const referralLink = `${baseUrl}?ref=${userId}`;
+
+        // Create user
+        const user = await User.create({
+            userId,
+            name,
+            phone,
+            email,
+            password,
+            referralLink,
+            parentId: parentId || null,
+        });
+
+        // If user registered with a referral link, update parent user’s referredIds
+        if (parentId) {
+            await User.updateOne(
+                { userId: parentId },
+                { $push: { referredIds: userId } }
+            );
+        }
+
+        try {
+            const wallet = await Wallet.create({
+                userId,
+                name,
+                walletAddress: "",
+                totalWalletBalance: 0,
+                withdrawals: [],
+            });
+            console.log("🟢 Wallet created successfully:");
+        } catch (err) {
+            console.error("❌ Error creating wallet:", err.message);
         }
 
         // Sending Mail
@@ -144,5 +253,53 @@ export const loginUser = async (req, res) => {
     } catch (error) {
         console.error("Login error:", error.message);
         res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
+
+//Register and Update KYC for Users
+export const submitKYC = async (req, res) => {
+    try {
+        const { userId, name, walletAddress } = req.body;
+
+        // Step 1️⃣: Validate input
+        if (!userId || !walletAddress) {
+            return res.status(400).json({ message: "userId and walletAddress are required." });
+        }
+
+        // Step 2️⃣: Check if user exists
+        const user = await User.findOne({ userId });
+        if (!user) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        // Step 3️⃣: Update wallet address in User model
+        user.walletAddress = walletAddress;
+        await user.save();
+
+        // Step 4️⃣: Update wallet address in Staking model
+        const staking = await Staking.findOne({ userId });
+        if (staking) {
+            staking.walletAddress = walletAddress;
+            await staking.save();
+        }
+
+        // Step 5️⃣: Initialize Wallet model if not present
+        const wallet = await Wallet.findOne({ userId });
+        if (wallet){
+            // Just update wallet address if exists
+            wallet.walletAddress = walletAddress;
+            await wallet.save();
+        }
+
+        return res.status(200).json({
+            message: "KYC submitted successfully",
+            userId,
+            name: name || user.name,
+            walletAddress,
+        });
+    } catch (error) {
+        console.error("Error submitting KYC:", error);
+        res.status(500).json({ message: "Server error", error: error.message });
     }
 };

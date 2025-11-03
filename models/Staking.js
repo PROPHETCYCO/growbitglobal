@@ -13,7 +13,8 @@ const stakingSchema = new mongoose.Schema(
         },
         walletAddress: {
             type: String,
-            required: true,
+            default: "",
+            required: false,
         },
         myStaking: {
             type: Number,
