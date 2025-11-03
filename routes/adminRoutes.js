@@ -4,7 +4,8 @@ import {
     getAllWallets,
     getAllPayouts,
     getAllStakings,
-    approvePayoutById
+    approvePayoutById,
+    updateWithdrawalStatus
 } from "../controllers/adminController.js";
 import { getAdminDashboard } from "../controllers/userDataController.js";
 
@@ -18,5 +19,6 @@ router.get("/payouts", getAllPayouts);
 router.get("/stakings", getAllStakings);
 router.get("/dashboard", getAdminDashboard);
 router.post("/approve-payout", approvePayoutById);
+router.post("/approve-withdrawal", updateWithdrawalStatus);
 
 export default router;

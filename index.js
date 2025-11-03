@@ -37,7 +37,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/userdata", userDataRoutes);
 
 // Schedule: Every day at 11:58 PM IST
-cron.schedule("*/20 * * * * *", async () => {
+cron.schedule("*/5 * * * *", async () => {
     console.log("⏰ Running staking reward calculation every 10 seconds (TEST MODE)...");
     try {
         await calculateDailyStakingRewards(

@@ -4,6 +4,7 @@ import Wallet from "../models/Wallet.js";
 //import jwt from "jsonwebtoken";
 import { generateUniqueUserId } from "../utils/generateUserId.js";
 import { sendMail } from '../mailer.js';
+import { format } from "date-fns-tz";
 
 export const registerUser = async (req, res) => {
     try {
@@ -377,5 +378,56 @@ export const submitKYC = async (req, res) => {
     } catch (error) {
         console.error("Error submitting KYC:", error);
         res.status(500).json({ message: "Server error", error: error.message });
+    }
+};
+
+
+// withdrawal request
+export const requestWithdrawal = async (req, res) => {
+    try {
+        const { userId, amount } = req.body;
+
+        if (!userId || !amount) {
+            return res.status(400).json({ success: false, message: "User ID and amount are required" });
+        }
+
+        if (amount <= 0) {
+            return res.status(400).json({ success: false, message: "Invalid withdrawal amount" });
+        }
+
+        // Find wallet
+        const wallet = await Wallet.findOne({ userId });
+        if (!wallet) {
+            return res.status(404).json({ success: false, message: "Wallet not found" });
+        }
+
+        // Check balance
+        if (wallet.totalWalletBalance < amount) {
+            return res.status(400).json({ success: false, message: "Insufficient wallet balance" });
+        }
+
+        // Format date in IST
+        const istDate = format(new Date(), "yyyy-MM-dd HH:mm:ss", { timeZone: "Asia/Kolkata" });
+
+        // Add withdrawal record
+        wallet.withdrawals.push({
+            amount,
+            date: istDate,
+            status: "pending",
+        });
+
+        // Optionally deduct immediately (uncomment if needed)
+        // wallet.totalWalletBalance -= amount;
+
+        await wallet.save();
+
+        return res.status(201).json({
+            success: true,
+            message: "Withdrawal request submitted successfully",
+            data: wallet,
+        });
+    } catch (error) {
+        console.error("Error processing withdrawal request:", error);
+        return res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
