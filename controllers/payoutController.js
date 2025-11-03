@@ -51,7 +51,7 @@ export const finalizeAllPayouts = async (req, res) => {
 
             if (commission > 0) {
                 // Add to total payout
-                payout.totalPayout += commission;
+                //payout.totalPayout += commission;
                 payout.payouts.push({
                     amount: commission,
                     date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD HH:mm:ss"),

@@ -257,6 +257,82 @@ export const loginUser = async (req, res) => {
 };
 
 
+//Geneology tree
+export const getUserAndDirectTeamStaking = async (req, res) => {
+    try {
+        const { userId } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({ success: false, message: "userId is required" });
+        }
+
+        // 🔹 1️⃣ Find the main user
+        const mainUser = await User.findOne({ userId });
+        if (!mainUser) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        // 🔹 2️⃣ Get the user's staking
+        const userStaking = await Staking.findOne({ userId });
+
+        // 🔹 3️⃣ Get all direct team (level 2 — referredIds)
+        const directTeamIds = mainUser.referredIds || [];
+
+        // If no direct users, still respond properly
+        if (directTeamIds.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "User has no direct team members",
+                user: {
+                    userId: mainUser.userId,
+                    name: mainUser.name,
+                },
+                userStaking: userStaking || null,
+                directTeam: [],
+            });
+        }
+
+        // 🔹 4️⃣ Fetch all direct team user details
+        const directUsers = await User.find({ userId: { $in: directTeamIds } });
+
+        // 🔹 5️⃣ Fetch staking for those users
+        const directStakings = await Staking.find({ userId: { $in: directTeamIds } });
+
+        // Create a map for fast lookup
+        const stakingMap = new Map();
+        directStakings.forEach(stk => stakingMap.set(stk.userId, stk));
+
+        // 🔹 6️⃣ Combine results: even if no staking, include user info
+        const teamDetails = directUsers.map(user => ({
+            userId: user.userId,
+            name: user.name,
+            email: user.email,
+            staking: stakingMap.get(user.userId) || null, // null if no staking
+        }));
+
+        // 🔹 7️⃣ Final response
+        res.status(200).json({
+            success: true,
+            message: "User and direct team staking details fetched successfully",
+            data: {
+                user: {
+                    userId: mainUser.userId,
+                    name: mainUser.name,
+                    email: mainUser.email,
+                },
+                userStaking: userStaking || null,
+                directTeam: teamDetails,
+            },
+        });
+
+    } catch (error) {
+        console.error("Error fetching staking tree:", error.message);
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+};
+
+
+
 //Register and Update KYC for Users
 export const submitKYC = async (req, res) => {
     try {
@@ -286,7 +362,7 @@ export const submitKYC = async (req, res) => {
 
         // Step 5️⃣: Initialize Wallet model if not present
         const wallet = await Wallet.findOne({ userId });
-        if (wallet){
+        if (wallet) {
             // Just update wallet address if exists
             wallet.walletAddress = walletAddress;
             await wallet.save();

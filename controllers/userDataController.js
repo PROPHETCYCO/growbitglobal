@@ -70,3 +70,52 @@ export const getStakingByUserId = async (req, res) => {
         res.status(500).json({ success: false, message: "Server error" });
     }
 };
+
+
+//aadmin dashboard
+export const getAdminDashboard = async (req, res) => {
+    try {
+        // 1️⃣ Total users
+        const totalUsers = await User.countDocuments();
+
+        // 2️⃣ Current business: sum of myStaking from User model
+        const userBusinessData = await User.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: { $ifNull: ["$myStaking", 0] } },
+                },
+            },
+        ]);
+        const currentBusiness = userBusinessData[0]?.total || 0;
+
+        // 3️⃣ Total business: sum of myStaking from Staking model
+        const stakingBusinessData = await Staking.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: { $ifNull: ["$myStaking", 0] } },
+                },
+            },
+        ]);
+        const totalBusiness = stakingBusinessData[0]?.total || 0;
+
+        // ✅ Response
+        return res.status(200).json({
+            success: true,
+            message: "Admin dashboard data fetched successfully",
+            data: {
+                totalUsers,
+                currentBusiness,
+                totalBusiness,
+            },
+        });
+    } catch (error) {
+        console.error("Error fetching admin dashboard:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while fetching dashboard",
+            error: error.message,
+        });
+    }
+};

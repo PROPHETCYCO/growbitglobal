@@ -26,6 +26,7 @@ export const addCoinStaking = async (req, res) => {
             Key: uniqueKey,
             Body: file.buffer,
             ContentType: file.mimetype,
+            ACL: "public-read",
         };
 
         await s3.send(new PutObjectCommand(uploadParams));

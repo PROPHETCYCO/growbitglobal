@@ -4,9 +4,9 @@ import { getUserById, getWalletByUserId, getPayoutsByUserId, getStakingByUserId 
 const router = express.Router();
 
 // User panel routes (based on userId)
-router.get("/user", getUserById);
-router.get("/wallet", getWalletByUserId);
-router.get("/payouts", getPayoutsByUserId);
-router.get("/staking", getStakingByUserId);
+router.post("/user", getUserById);
+router.post("/wallet", getWalletByUserId);
+router.post("/payouts", getPayoutsByUserId);
+router.post("/staking", getStakingByUserId);
 
 export default router;

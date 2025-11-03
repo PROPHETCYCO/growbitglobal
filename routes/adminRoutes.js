@@ -3,8 +3,10 @@ import {
     getAllUsers,
     getAllWallets,
     getAllPayouts,
-    getAllStakings
+    getAllStakings,
+    approvePayoutById
 } from "../controllers/adminController.js";
+import { getAdminDashboard } from "../controllers/userDataController.js";
 
 const router = express.Router();
 
@@ -14,5 +16,7 @@ router.get("/users", getAllUsers);
 router.get("/wallets", getAllWallets);
 router.get("/payouts", getAllPayouts);
 router.get("/stakings", getAllStakings);
+router.get("/dashboard", getAdminDashboard);
+router.post("/approve-payout", approvePayoutById);
 
 export default router;
