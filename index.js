@@ -10,6 +10,8 @@ import testRoute from "./routes/testRoute.js";
 import userRoutes from "./routes/userRoutes.js";
 import stakingRoutes from "./routes/stakingRoutes.js";
 import payoutRoutes from "./routes/payoutRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
+import userDataRoutes from "./routes/userDataRoutes.js";
 import { calculateDailyStakingRewards } from "./controllers/stakingController.js";
 
 // Load env vars
@@ -31,6 +33,8 @@ app.use("/api/v1/test", testRoute);
 app.use("/api/users", userRoutes);
 app.use("/api/staking", stakingRoutes);
 app.use("/api/payout", payoutRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/userdata", userDataRoutes);
 
 // Schedule: Every day at 11:58 PM IST
 cron.schedule("*/20 * * * * *", async () => {
