@@ -4,7 +4,7 @@ import Wallet from "../models/Wallet.js";
 import Payout from "../models/Payout.js";
 //import jwt from "jsonwebtoken";
 import { generateUniqueUserId } from "../utils/generateUserId.js";
-//import { sendMail } from '../mailer.js';
+import { sendMail } from '../mailer.js';
 import { format } from "date-fns-tz";
 import { calculateFullTeamBusiness } from "../utils/tree.js";
 
@@ -87,19 +87,19 @@ export const registerUser = async (req, res) => {
         }
 
         // Sending Mail
-        // const subject = `Welcome to Grow Bit Global, ${name || "User"}!`;
-        // const html = `
-        //     <h2>Welcome to Grow Bit Global</h2>
-        //     <p>Hi ${name || "there"},</p>
-        //     <p>Your account has been created successfully.</p>
-        //     <p><strong>User ID:</strong> ${userId}</p>
-        //     <p><strong>Password:</strong> ${password}</p>
-        //     <p>Login here: <a href="https://growbitglobal.org/login">https://growbitglobal.org/login</a></p>
-        //     <br/>
-        //     <p><em>Note: Please change your password after your first login.</em></p>
-        // `;
+        const subject = `Welcome to Grow Bit Global, ${name || "User"}!`;
+        const html = `
+            <h2>Welcome to Grow Bit Global</h2>
+            <p>Hi ${name || "there"},</p>
+            <p>Your account has been created successfully.</p>
+            <p><strong>User ID:</strong> ${userId}</p>
+            <p><strong>Password:</strong> ${password}</p>
+            <p>Login here: <a href="https://growbitglobal.org/login">https://growbitglobal.org/login</a></p>
+            <br/>
+            <p><em>Note: Please change your password after your first login.</em></p>
+        `;
 
-        // await sendMail(email, subject, html);
+        await sendMail(email, subject, html);
 
 
         res.status(201).json({
@@ -180,19 +180,19 @@ export const registerFirstUser = async (req, res) => {
         }
 
         // Sending Mail
-        // const subject = `Welcome to Grow Bit Global, ${name || "User"}!`;
-        // const html = `
-        //     <h2>Welcome to Grow Bit Global</h2>
-        //     <p>Hi ${name || "there"},</p>
-        //     <p>Your account has been created successfully.</p>
-        //     <p><strong>User ID:</strong> ${userId}</p>
-        //     <p><strong>Password:</strong> ${password}</p>
-        //     <p>Login here: <a href="https://growbitglobal.org/login">https://growbitglobal.org/login</a></p>
-        //     <br/>
-        //     <p><em>Note: Please change your password after your first login.</em></p>
-        // `;
+        const subject = `Welcome to Grow Bit Global, ${name || "User"}!`;
+        const html = `
+            <h2>Welcome to Grow Bit Global</h2>
+            <p>Hi ${name || "there"},</p>
+            <p>Your account has been created successfully.</p>
+            <p><strong>User ID:</strong> ${userId}</p>
+            <p><strong>Password:</strong> ${password}</p>
+            <p>Login here: <a href="https://growbitglobal.org/login">https://growbitglobal.org/login</a></p>
+            <br/>
+            <p><em>Note: Please change your password after your first login.</em></p>
+        `;
 
-        // await sendMail(email, subject, html);
+        await sendMail(email, subject, html);
 
 
         res.status(201).json({
