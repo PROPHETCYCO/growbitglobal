@@ -145,7 +145,7 @@ export const registerFirstUser = async (req, res) => {
         const userId = await generateUniqueUserId();
 
         // Create referral link
-        const baseUrl = "https://example.com/register"; // Replace with your frontend URL
+        const baseUrl = "https://growbitglobal.org/register"; // Replace with your frontend URL
         const referralLink = `${baseUrl}/${userId}`;
 
         // Create user
