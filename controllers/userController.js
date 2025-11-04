@@ -94,7 +94,7 @@ export const registerUser = async (req, res) => {
             <p>Your account has been created successfully.</p>
             <p><strong>User ID:</strong> ${userId}</p>
             <p><strong>Password:</strong> ${password}</p>
-            <p>Login here: <a href="https://yourdomain.com/login">https://yourdomain.com/login</a></p>
+            <p>Login here: <a href="https://growbitglobal.org/login">https://growbitglobal.org/login</a></p>
             <br/>
             <p><em>Note: Please change your password after your first login.</em></p>
         `;
@@ -187,7 +187,7 @@ export const registerFirstUser = async (req, res) => {
             <p>Your account has been created successfully.</p>
             <p><strong>User ID:</strong> ${userId}</p>
             <p><strong>Password:</strong> ${password}</p>
-            <p>Login here: <a href="https://yourdomain.com/login">https://yourdomain.com/login</a></p>
+            <p>Login here: <a href="https://growbitglobal.org/login">https://growbitglobal.org/login</a></p>
             <br/>
             <p><em>Note: Please change your password after your first login.</em></p>
         `;
