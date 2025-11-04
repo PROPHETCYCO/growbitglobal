@@ -5,7 +5,8 @@ import {
     getAllPayouts,
     getAllStakings,
     approvePayoutById,
-    updateWithdrawalStatus
+    updateWithdrawalStatus,
+    adminUpdateUser
 } from "../controllers/adminController.js";
 import { getAdminDashboard } from "../controllers/userDataController.js";
 
@@ -20,5 +21,6 @@ router.get("/stakings", getAllStakings);
 router.get("/dashboard", getAdminDashboard);
 router.post("/approve-payout", approvePayoutById);
 router.post("/approve-withdrawal", updateWithdrawalStatus);
+router.put("/update-user/:userId", adminUpdateUser);
 
 export default router;

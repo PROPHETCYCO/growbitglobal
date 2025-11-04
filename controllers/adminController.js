@@ -208,3 +208,54 @@ export const updateWithdrawalStatus = async (req, res) => {
         res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
+
+
+export const adminUpdateUser = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { name, phone, email, password, walletAddress } = req.body;
+
+        // Check if user exists
+        const user = await User.findOne({ userId });
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        // Update fields only if provided
+        if (name) user.name = name;
+        if (phone) user.phone = phone;
+        if (email) user.email = email;
+        if (password) user.password = password; // pre-save hook will hash this
+        if (walletAddress) user.walletAddress = walletAddress;
+
+        await user.save(); // triggers the pre("save") hook for password hashing
+
+        // If walletAddress provided, update across models
+        if (walletAddress) {
+            await Promise.all([
+                Wallet.updateOne({ userId }, { $set: { walletAddress } }),
+                Staking.updateOne({ userId }, { $set: { walletAddress } }),
+                Payout.updateMany({ userId }, { $set: { walletAddress } }),
+            ]);
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "User details updated successfully",
+            updatedUser: {
+                userId: user.userId,
+                name: user.name,
+                phone: user.phone,
+                email: user.email,
+                walletAddress: user.walletAddress,
+            },
+        });
+    } catch (error) {
+        console.error("❌ Error updating user:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error while updating user details",
+            error: error.message,
+        });
+    }
+};
