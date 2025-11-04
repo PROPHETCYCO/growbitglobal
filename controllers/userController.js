@@ -51,8 +51,8 @@ export const registerUser = async (req, res) => {
         const userId = await generateUniqueUserId();
 
         // Create referral link
-        const baseUrl = "https://example.com/register"; // Replace with your frontend URL
-        const referralLink = `${baseUrl}?ref=${userId}`;
+        const baseUrl = "https://growbitglobal.org/register"; // Replace with your frontend URL
+        const referralLink = `${baseUrl}/${userId}`;
 
         // Create user
         const user = await User.create({
@@ -146,7 +146,7 @@ export const registerFirstUser = async (req, res) => {
 
         // Create referral link
         const baseUrl = "https://example.com/register"; // Replace with your frontend URL
-        const referralLink = `${baseUrl}?ref=${userId}`;
+        const referralLink = `${baseUrl}/${userId}`;
 
         // Create user
         const user = await User.create({
@@ -156,16 +156,15 @@ export const registerFirstUser = async (req, res) => {
             email,
             password,
             referralLink,
-            parentId: parentId || null,
         });
 
         // If user registered with a referral link, update parent user’s referredIds
-        if (parentId) {
-            await User.updateOne(
-                { userId: parentId },
-                { $push: { referredIds: userId } }
-            );
-        }
+        // if (parentId) {
+        //     await User.updateOne(
+        //         { userId: parentId },
+        //         { $push: { referredIds: userId } }
+        //     );
+        // }
 
         try {
             const wallet = await Wallet.create({
