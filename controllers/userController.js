@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import Staking from "../models/Staking.js";
 import Wallet from "../models/Wallet.js";
+import Payout from "../models/Payout.js";
 //import jwt from "jsonwebtoken";
 import { generateUniqueUserId } from "../utils/generateUserId.js";
 import { sendMail } from '../mailer.js';
@@ -439,12 +440,31 @@ export const requestWithdrawal = async (req, res) => {
 export const getFullTeamBusiness = async (req, res) => {
     try {
         const { userId } = req.body;
-        if (!userId)
-            return res.status(400).json({ message: "userId is required" });
+        if (!userId) {
+            return res.status(400).json({ success: false, message: "userId is required" });
+        }
 
+        // Calculate full team business (assuming this is your own logic)
         const { totalUsers, currentTeamBusiness, totalTeamBusiness } =
             await calculateFullTeamBusiness(userId);
 
+        // Fetch user (required)
+        const user = await User.findOne({ userId });
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        // Optional data - don’t throw errors if missing
+        const staking = await Staking.findOne({ userId }).catch(() => null);
+        const payouts = await Payout.find({ userId }).sort({ createdAt: -1 }).catch(() => []);
+        const wallet = await Wallet.findOne({ userId }).catch(() => null);
+
+        // Log missing data (non-breaking)
+        if (!staking) console.log(`⚠️ No staking record found for user ${userId}`);
+        if (!payouts.length) console.log(`⚠️ No payouts found for user ${userId}`);
+        if (!wallet) console.log(`⚠️ No wallet found for user ${userId}`);
+
+        // ✅ Safe response: even if some are missing
         res.status(200).json({
             success: true,
             message: "Team business calculated successfully",
@@ -453,9 +473,18 @@ export const getFullTeamBusiness = async (req, res) => {
                 currentTeamBusiness,
                 totalTeamBusiness,
             },
+            user,
+            staking: staking || null,
+            payouts: payouts || [],
+            wallet: wallet || null,
         });
+
     } catch (error) {
-        console.error("Error in getFullTeamBusiness:", error);
-        res.status(500).json({ message: "Server error", error: error.message });
+        console.error("❌ Error in getFullTeamBusiness:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error",
+            error: error.message,
+        });
     }
 };

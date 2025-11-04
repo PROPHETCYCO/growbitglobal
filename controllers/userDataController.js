@@ -72,7 +72,7 @@ export const getStakingByUserId = async (req, res) => {
 };
 
 
-//aadmin dashboard
+//admin dashboard
 export const getAdminDashboard = async (req, res) => {
     try {
         // 1️⃣ Total users
@@ -99,6 +99,7 @@ export const getAdminDashboard = async (req, res) => {
             },
         ]);
         const totalBusiness = stakingBusinessData[0]?.total || 0;
+        
 
         // ✅ Response
         return res.status(200).json({

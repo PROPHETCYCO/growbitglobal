@@ -35,7 +35,7 @@ export const addCoinStaking = async (req, res) => {
         const fileUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueKey}`;
 
         // Indian date-time
-        const istDate = format(new Date(), "yyyy-MM-dd HH:mm:ss", { timeZone: "Asia/Kolkata" });
+        const istDate = moment().tz("Asia/Kolkata").format("YYYY-MM-DD HH:mm:ss");
 
         // Check if staking exists for user
         let staking = await Staking.findOne({ userId: user.userId });
