@@ -2,6 +2,7 @@ import moment from "moment-timezone";
 
 import Payout from "../models/Payout.js";
 import User from "../models/User.js";
+import Wallet from "../models/Wallet.js";
 import { calculateTreeCommission } from "../utils/tree.js";
 
 // POST /api/payout/calculate
@@ -43,7 +44,8 @@ export const finalizeAllPayouts = async (req, res) => {
 
         for (const user of users) {
             const { totalUsers, commission } = await calculateTreeCommission(user.userId);
-
+            
+            let Wallet = await Wallet.findOne({ userId: user.userId });
             let payout = await Payout.findOne({ userId: user.userId });
             if (!payout) {
                 payout = new Payout({ userId: user.userId, name: user.name });
@@ -51,11 +53,16 @@ export const finalizeAllPayouts = async (req, res) => {
 
             if (commission > 0) {
                 // Add to total payout
-                //payout.totalPayout += commission;
+                payout.totalPayout += commission;
+                Wallet.payoutWalletBalance += commission;
+                Wallet.totalWalletBalance += commission;
+
+                await Wallet.save();
+                
                 payout.payouts.push({
                     amount: commission,
                     date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD HH:mm:ss"),
-                    status: "pending",
+                    status: "completed",
                 });
 
                 summary.push({
