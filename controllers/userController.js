@@ -79,7 +79,11 @@ export const registerUser = async (req, res) => {
                 name,
                 walletAddress: "",
                 totalWalletBalance: 0,
+                ryWalletBalance: 0,
+                payoutWalletBalance: 0,
                 withdrawals: [],
+                ryWithdrawals: [],
+                payoutWithdrawals: [],
             });
             console.log("🟢 Wallet created successfully:");
         } catch (err) {
@@ -172,7 +176,11 @@ export const registerFirstUser = async (req, res) => {
                 name,
                 walletAddress: "",
                 totalWalletBalance: 0,
+                ryWalletBalance: 0,
+                payoutWalletBalance: 0,
                 withdrawals: [],
+                ryWithdrawals: [],
+                payoutWithdrawals: [],
             });
             console.log("🟢 Wallet created successfully:");
         } catch (err) {
