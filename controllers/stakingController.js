@@ -148,6 +148,7 @@ export const calculateDailyStakingRewards = async (req, res) => {
                     continue;
                 } else {
                     wallet.totalWalletBalance += reward;
+                    wallet.ryWalletBalance += reward;
                 }
                 await wallet.save();
 

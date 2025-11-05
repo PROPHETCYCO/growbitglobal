@@ -2,7 +2,7 @@ import User from '../models/User.js';
 import Wallet from '../models/Wallet.js';
 import Staking from '../models/Staking.js';
 import Payout from '../models/Payout.js';
-import { format } from "date-fns-tz";
+import { getISTDateString } from "../models/Wallet.js";
 
 import mongoose from 'mongoose';
 
@@ -121,6 +121,7 @@ export const approvePayoutById = async (req, res) => {
         }
 
         wallet.totalWalletBalance += payoutEntry.amount;
+        wallet.payoutWalletBalance += payoutEntry.amount;
         await wallet.save();
 
         // ✅ Step 8: Return success
@@ -148,8 +149,8 @@ export const approvePayoutById = async (req, res) => {
 };
 
 
-//Withdrawal approval by admin
-export const updateWithdrawalStatus = async (req, res) => {
+//Withdrawal approval by admin for RY
+export const updateryWithdrawalStatus = async (req, res) => {
     try {
         const { userId, withdrawalId, action } = req.body;
 
@@ -168,7 +169,7 @@ export const updateWithdrawalStatus = async (req, res) => {
         }
 
         // Find withdrawal record
-        const withdrawal = wallet.withdrawals.id(withdrawalId);
+        const withdrawal = wallet.ryWithdrawals.id(withdrawalId);
         if (!withdrawal) {
             return res.status(404).json({ success: false, message: "Withdrawal record not found" });
         }
@@ -179,20 +180,84 @@ export const updateWithdrawalStatus = async (req, res) => {
 
         if (action === "approve") {
             // Check sufficient balance before approval
-            if (wallet.totalWalletBalance < withdrawal.amount) {
+            if (wallet.ryWalletBalance < withdrawal.amount) {
                 return res.status(400).json({ success: false, message: "Insufficient wallet balance to approve withdrawal" });
             }
 
             // Deduct the amount
             wallet.totalWalletBalance -= withdrawal.amount;
+            wallet.ryWalletBalance -= withdrawal.amount;
 
             withdrawal.status = "approved";
-            withdrawal.date = format(new Date(), "yyyy-MM-dd HH:mm:ss", { timeZone: "Asia/Kolkata" });
+            withdrawal.date = getISTDateString();
 
         } else if (action === "reject") {
             // If rejected, just mark it
             withdrawal.status = "rejected";
-            withdrawal.date = format(new Date(), "yyyy-MM-dd HH:mm:ss", { timeZone: "Asia/Kolkata" });
+            withdrawal.date = getISTDateString();
+        }
+
+        await wallet.save();
+
+        res.status(200).json({
+            success: true,
+            message: `Withdrawal ${action}ed successfully`,
+            data: wallet,
+        });
+
+    } catch (error) {
+        console.error("Error updating withdrawal:", error);
+        res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+};
+
+
+////Withdrawal approval by admin for Payout
+export const updatepayoutWithdrawalStatus = async (req, res) => {
+    try {
+        const { userId, withdrawalId, action } = req.body;
+
+        if (!userId || !withdrawalId || !action) {
+            return res.status(400).json({ success: false, message: "userId, withdrawalId, and action are required" });
+        }
+
+        if (!["approve", "reject"].includes(action)) {
+            return res.status(400).json({ success: false, message: "Action must be 'approve' or 'reject'" });
+        }
+
+        // Find wallet
+        const wallet = await Wallet.findOne({ userId });
+        if (!wallet) {
+            return res.status(404).json({ success: false, message: "Wallet not found" });
+        }
+
+        // Find withdrawal record
+        const withdrawal = wallet.payoutWithdrawals.id(withdrawalId);
+        if (!withdrawal) {
+            return res.status(404).json({ success: false, message: "Withdrawal record not found" });
+        }
+
+        if (withdrawal.status !== "pending") {
+            return res.status(400).json({ success: false, message: "This withdrawal has already been processed" });
+        }
+
+        if (action === "approve") {
+            // Check sufficient balance before approval
+            if (wallet.payoutWalletBalance < withdrawal.amount) {
+                return res.status(400).json({ success: false, message: "Insufficient wallet balance to approve withdrawal" });
+            }
+
+            // Deduct the amount
+            wallet.totalWalletBalance -= withdrawal.amount;
+            wallet.payoutWalletBalance -= withdrawal.amount;
+
+            withdrawal.status = "approved";
+            withdrawal.date = getISTDateString();
+
+        } else if (action === "reject") {
+            // If rejected, just mark it
+            withdrawal.status = "rejected";
+            withdrawal.date = getISTDateString();
         }
 
         await wallet.save();

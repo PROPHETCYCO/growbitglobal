@@ -384,7 +384,7 @@ export const submitKYC = async (req, res) => {
 
 
 // withdrawal request
-export const requestWithdrawal = async (req, res) => {
+export const requestpayoutWithdrawal = async (req, res) => {
     try {
         const { userId, amount } = req.body;
 
@@ -392,8 +392,8 @@ export const requestWithdrawal = async (req, res) => {
             return res.status(400).json({ success: false, message: "User ID and amount are required" });
         }
 
-        if (amount <= 0) {
-            return res.status(400).json({ success: false, message: "Invalid withdrawal amount" });
+        if (amount < 30) {
+            return res.status(400).json({ success: false, message: "Minimum withdrawal amount is ₹30" });
         }
 
         // Find wallet
@@ -403,17 +403,27 @@ export const requestWithdrawal = async (req, res) => {
         }
 
         // Check balance
-        if (wallet.totalWalletBalance < amount) {
+        if (wallet.payoutWalletBalance < amount) {
             return res.status(400).json({ success: false, message: "Insufficient wallet balance" });
         }
 
         // Format date in IST
-        const istDate = format(new Date(), "yyyy-MM-dd HH:mm:ss", { timeZone: "Asia/Kolkata" });
+        //const istDate = format(new Date(), "yyyy-MM-dd HH:mm:ss", { timeZone: "Asia/Kolkata" });
+
+        const fee = amount * 0.05;
+        const finalAmount = amount - fee;
 
         // Add withdrawal record
+        wallet.payoutWithdrawals.push({
+            amount,
+            payment: finalAmount,
+            status: "pending",
+        });
+
+        //Add ryWalletBalance deduction on request
         wallet.withdrawals.push({
             amount,
-            date: istDate,
+            payment: finalAmount,
             status: "pending",
         });
 
@@ -434,6 +444,86 @@ export const requestWithdrawal = async (req, res) => {
 };
 
 
+// RY withdrawal Request
+export const requestryWithdrawal = async (req, res) => {
+    try {
+        const { userId, amount } = req.body;
+
+        // 1️⃣ Validate input
+        if (!userId || !amount) {
+            return res.status(400).json({ success: false, message: "User ID and amount are required" });
+        }
+
+        if (amount < 30) {
+            return res.status(400).json({ success: false, message: "Minimum withdrawal amount is ₹30" });
+        }
+
+        // 2️⃣ Find user wallet
+        const wallet = await Wallet.findOne({ userId });
+        if (!wallet) {
+            return res.status(404).json({ success: false, message: "Wallet not found" });
+        }
+
+        // 3️⃣ Check if user has enough balance
+        if (wallet.ryWalletBalance < amount) {
+            return res.status(400).json({ success: false, message: "Insufficient RY wallet balance" });
+        }
+
+        // 4️⃣ Check 30-day gap between withdrawals
+        const lastWithdrawal = wallet.ryWithdrawals?.length
+            ? wallet.ryWithdrawals[wallet.ryWithdrawals.length - 1]
+            : null;
+
+        if (lastWithdrawal) {
+            const lastDate = new Date(lastWithdrawal.date.replace("+05:30", "Z")); // Convert IST ISO to UTC Date
+            const now = new Date();
+            const diffDays = (now - lastDate) / (1000 * 60 * 60 * 24);
+
+            if (diffDays < 30) {
+                return res.status(400).json({
+                    success: false,
+                    message: `You can request a new withdrawal after ${Math.ceil(30 - diffDays)} day(s).`,
+                });
+            }
+        }
+
+        const fee = amount * 0.05;
+        const finalAmount = amount - fee;
+
+        // 5️⃣ Add new withdrawal (date auto-saved as IST by schema)
+        wallet.ryWithdrawals.push({
+            amount,
+            payment: finalAmount,
+            status: "pending",
+        });
+
+        // Optional: also add to generic withdrawals array if you track both
+        wallet.withdrawals.push({
+            amount,
+            payment: finalAmount,
+            status: "pending",
+        });
+
+        await wallet.save();
+
+        // 6️⃣ Success response
+        return res.status(201).json({
+            success: true,
+            message: "Withdrawal request submitted successfully",
+            data: wallet,
+        });
+
+    } catch (error) {
+        console.error("❌ Error processing withdrawal request:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error",
+            error: error.message,
+        });
+    }
+};
+
+
 
 //current team business, total team business, total users in team
 export const getFullTeamBusiness = async (req, res) => {
@@ -443,27 +533,45 @@ export const getFullTeamBusiness = async (req, res) => {
             return res.status(400).json({ success: false, message: "userId is required" });
         }
 
-        // Calculate full team business (assuming this is your own logic)
+        // 🧮 Calculate team business
         const { totalUsers, currentTeamBusiness, totalTeamBusiness } =
             await calculateFullTeamBusiness(userId);
 
-        // Fetch user (required)
+        // 🧍 Fetch main user
         const user = await User.findOne({ userId });
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found" });
         }
 
-        // Optional data - don’t throw errors if missing
+        // 🧾 Optional data
         const staking = await Staking.findOne({ userId }).catch(() => null);
         const payouts = await Payout.find({ userId }).sort({ createdAt: -1 }).catch(() => []);
         const wallet = await Wallet.findOne({ userId }).catch(() => null);
 
-        // Log missing data (non-breaking)
         if (!staking) console.log(`⚠️ No staking record found for user ${userId}`);
         if (!payouts.length) console.log(`⚠️ No payouts found for user ${userId}`);
         if (!wallet) console.log(`⚠️ No wallet found for user ${userId}`);
 
-        // ✅ Safe response: even if some are missing
+        // 💰 Calculate 10% referral bonus from referred users’ myStaking
+        let totalReferralBonus = 0;
+        let referredBonuses = [];
+
+        if (user.referredIds && user.referredIds.length > 0) {
+            const referredUsers = await User.find({ userId: { $in: user.referredIds } });
+
+            referredBonuses = referredUsers.map(ref => {
+                const bonus = ref.myStaking * 0.10; // 10% of their staking
+                totalReferralBonus += bonus;
+                return {
+                    referredUserId: ref.userId,
+                    referredName: ref.name,
+                    referredStaking: ref.myStaking,
+                    referralBonus: bonus,
+                };
+            });
+        }
+
+        // ✅ Send final response
         res.status(200).json({
             success: true,
             message: "Team business calculated successfully",
@@ -471,6 +579,8 @@ export const getFullTeamBusiness = async (req, res) => {
                 totalUsers,
                 currentTeamBusiness,
                 totalTeamBusiness,
+                totalReferralBonus, // 💸 Total 10% earnings
+                referredBonuses,     // Detailed breakdown
             },
             user,
             staking: staking || null,
