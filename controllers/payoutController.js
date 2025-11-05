@@ -44,8 +44,8 @@ export const finalizeAllPayouts = async (req, res) => {
 
         for (const user of users) {
             const { totalUsers, commission } = await calculateTreeCommission(user.userId);
-            
-            let Wallet = await Wallet.findOne({ userId: user.userId });
+
+            const wallet = await Wallet.findOne({ userId: user.userId });
             let payout = await Payout.findOne({ userId: user.userId });
             if (!payout) {
                 payout = new Payout({ userId: user.userId, name: user.name });
@@ -54,11 +54,11 @@ export const finalizeAllPayouts = async (req, res) => {
             if (commission > 0) {
                 // Add to total payout
                 payout.totalPayout += commission;
-                Wallet.payoutWalletBalance += commission;
-                Wallet.totalWalletBalance += commission;
+                wallet.payoutWalletBalance += commission;
+                wallet.totalWalletBalance += commission;
 
-                await Wallet.save();
-                
+                await wallet.save();
+
                 payout.payouts.push({
                     amount: commission,
                     date: moment().tz("Asia/Kolkata").format("YYYY-MM-DD HH:mm:ss"),
