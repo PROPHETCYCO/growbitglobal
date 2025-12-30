@@ -478,21 +478,45 @@ export const requestryWithdrawal = async (req, res) => {
         }
 
         // 4️⃣ Check 30-day gap between withdrawals
-        const lastWithdrawal = wallet.ryWithdrawals?.length
-            ? wallet.ryWithdrawals[wallet.ryWithdrawals.length - 1]
-            : null;
+        // const lastWithdrawal = wallet.ryWithdrawals?.length
+        //     ? wallet.ryWithdrawals[wallet.ryWithdrawals.length - 1]
+        //     : null;
 
-        if (lastWithdrawal) {
-            const lastDate = new Date(lastWithdrawal.date.replace("+05:30", "Z")); // Convert IST ISO to UTC Date
-            const now = new Date();
-            const diffDays = (now - lastDate) / (1000 * 60 * 60 * 24);
+        // if (lastWithdrawal) {
+        //     const lastDate = new Date(lastWithdrawal.date.replace("+05:30", "Z")); // Convert IST ISO to UTC Date
+        //     const now = new Date();
+        //     const diffDays = (now - lastDate) / (1000 * 60 * 60 * 24);
 
-            if (diffDays < 30) {
-                return res.status(400).json({
-                    success: false,
-                    message: `You can request a new withdrawal after ${Math.ceil(30 - diffDays)} day(s).`,
-                });
-            }
+        //     if (diffDays < 30) {
+        //         return res.status(400).json({
+        //             success: false,
+        //             message: `You can request a new withdrawal after ${Math.ceil(30 - diffDays)} day(s).`,
+        //         });
+        //     }
+        // }
+
+        // 📅 Withdrawal allowed only on fixed dates
+        const now = new Date();
+
+        // Convert to IST
+        const istNow = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+        const currentDay = istNow.getDate();       // 1–31
+        const currentMonth = istNow.getMonth() + 1; // 1–12
+
+        let allowedDay;
+
+        // February → 28th (leap year ignored as per requirement)
+        if (currentMonth === 2) {
+            allowedDay = 28;
+        } else {
+            allowedDay = 30;
+        }
+
+        if (currentDay !== allowedDay) {
+            return res.status(400).json({
+                success: false,
+                message: `Withdrawals are allowed only on ${allowedDay}${currentMonth === 2 ? "th February" : "th of each month"}.`,
+            });
         }
 
         const fee = amount * 0.05;
